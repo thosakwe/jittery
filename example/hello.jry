@@ -1,2 +1,5 @@
+// Small strings, of 6 or fewer characters, are stored without memory allocation.
 Print('Hi!')
-// Print('Hello, Jittery!')
+
+// Longer strings require memory allocation, and are garbage collected.
+Print('Hello, Jittery!')

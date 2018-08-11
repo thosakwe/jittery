@@ -7,6 +7,7 @@
 #include <jit/jit-dump.h>
 #include <bitset>
 #include <cstdint>
+#include <deque>
 #include <iostream>
 #include <vector>
 #include "Interpreter.h"
@@ -34,16 +35,14 @@ jit::Interpreter::LoadCompilationUnit(frontend::JitteryParser::CompilationUnitCo
 
     // TODO: Custom functions
     ctx->accept(this);
-
-    return true;
-}
-
-void jit::Interpreter::Run(const char **errorMessage) {
-    typedef void (*Exec)();
     jit_insn_return(entryPoint, nullptr);
     jit_dump_function(stdout, entryPoint, "entryPoint");
     jit_function_compile(entryPoint);
     jit_context_build_end(jitContext);
+    return true;
+}
+
+void jit::Interpreter::Run(const char **errorMessage) {
     jit_function_apply(entryPoint, nullptr, nullptr);
 }
 
@@ -122,13 +121,13 @@ antlrcpp::Any jit::Interpreter::visitCallExpr(frontend::JitteryParser::CallExprC
 
 void jitPrint(uint64_t obj) {
     if (JITTERY_HAS_TAG(obj, JITTERY_TAG_SMALL_STRING)) {
-        // The value is a char*
+        // The tag itself is a char*
         auto *str = (char *) &obj;
         std::cout << str << std::endl;
     } else if (JITTERY_HAS_TAG(obj, JITTERY_TAG_STRING)) {
-        // The value is a char**, not char*
-        auto *location = (char **) JITTERY_GET_VALUE(obj);
-        std::cout << *location << std::endl;
+        // The value is a char*
+        auto *location = (char *) JITTERY_GET_VALUE(obj);
+        std::cout << location << std::endl;
     } else {
         std::bitset<64> bits(obj);
         std::cout << "0b" << bits << std::endl;
@@ -158,7 +157,8 @@ antlrcpp::Any jit::Interpreter::visitStringExpr(frontend::JitteryParser::StringE
     stringText = stringText.substr(1, stringText.length() - 2);
 
     // Strings less than 7 chars can be stored directly in the tagged pointer.
-    if (stringText.length() < 7) {
+    auto len = stringText.length();
+    if (len < 7) {
         jit_ulong value = JITTERY_TAG_SMALL_STRING;
         auto *asCharPtr = (char *) &value;
 
@@ -168,7 +168,55 @@ antlrcpp::Any jit::Interpreter::visitStringExpr(frontend::JitteryParser::StringE
 
         return Any(JIT_ULONG_CONSTANT(value));
     } else {
-        // TODO: Handle bigger strings
-        return Any();
+        // Allocate some space.
+        auto *ptr = (char *) GCNew(this, (uint32_t) len + 1);
+        ptr[len] = 0;
+        strcpy(ptr, stringText.c_str());
+
+        // Encode a pointer
+        auto value = (jit_ulong) ptr;
+        value <<= 3;
+        value |= JITTERY_TAG_STRING;
+        return Any(JIT_ULONG_CONSTANT(value));
     }
+}
+
+void *jit::Interpreter::GCNew(jit::Interpreter *interpreter, uint32_t size) {
+    // If enough objects have been created, we need to sweep the GC.
+    if (interpreter->references.size() >= interpreter->maxGcObjects) {
+        // Only preserve references that are alive.
+        std::stack<GCReference *> stillAlive;
+
+        while (!interpreter->references.empty()) {
+            auto *ref = interpreter->references.top();
+
+            if (!ref->marked) {
+                free(ref->data);
+                delete ref;
+            } else {
+                stillAlive.push(ref);
+            }
+
+            interpreter->references.pop();
+        }
+
+        // Put back anything that's still alive.
+        while (!stillAlive.empty()) {
+            interpreter->references.push(stillAlive.top());
+            stillAlive.pop();
+        }
+
+        // If there are still too many objects, increase the count so that
+        // the GC isn't constantly looping.
+        if (interpreter->references.size() >= interpreter->maxGcObjects) {
+            interpreter->maxGcObjects++;
+        }
+    }
+
+    // Allocate data.
+    auto *data = new uint8_t[size];
+    auto *ref = new GCReference;
+    ref->marked = false;
+    interpreter->references.push(ref);
+    return ref->data = data;
 }

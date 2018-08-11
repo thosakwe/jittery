@@ -8,6 +8,7 @@
 #define JITTERY_INTERPRETER_H
 
 #include <jit/jit.h>
+#include <stack>
 #include "../frontend/frontend.h"
 #include "SymbolTable.h"
 
@@ -42,10 +43,21 @@ namespace jit
         Any visitStringExpr(JitteryParser::StringExprContext *ctx) override;
 
     private:
+
+        struct GCReference
+        {
+            bool marked = false;
+            void *data = nullptr;
+        };
+
         jit_context_t jitContext;
         jit_function_t entryPoint;
         jit_function_t currentFunction;
         SymbolTable<jit_value_t> *scope;
+        std::stack<GCReference *> references;
+        unsigned long maxGcObjects = 255;
+
+        static void *GCNew(Interpreter *interpreter, uint32_t size);
 
         void InitStdLib();
     };
