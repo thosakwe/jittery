@@ -42,12 +42,19 @@ namespace jit
 
         Any visitStringExpr(JitteryParser::StringExprContext *ctx) override;
 
+        Any visitIntExpr(JitteryParser::IntExprContext *ctx) override;
+
     private:
 
         struct GCReference
         {
             bool marked = false;
             void *data = nullptr;
+        };
+
+        union Bits64 {
+            double asDouble = 0.0;
+            jit_ulong asUlong;
         };
 
         jit_context_t jitContext;

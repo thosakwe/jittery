@@ -40,10 +40,7 @@ int main(int argc, const char **argv) {
             return 1;
         }
 
-        // Run 260 times just to aggravate the JIT
-        for (int i = 0; i < 260; i++) {
-            interpreter.Run(&errorMessage);
-        }
+        interpreter.Run(&errorMessage);
 
         return 0;
     }

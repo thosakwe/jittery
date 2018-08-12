@@ -36,7 +36,7 @@ jit::Interpreter::LoadCompilationUnit(frontend::JitteryParser::CompilationUnitCo
     // TODO: Custom functions
     ctx->accept(this);
     jit_insn_return(entryPoint, nullptr);
-    jit_dump_function(stdout, entryPoint, "entryPoint");
+    //jit_dump_function(stdout, entryPoint, "entryPoint");
     jit_function_compile(entryPoint);
     jit_context_build_end(jitContext);
     return true;
@@ -128,6 +128,21 @@ void jitPrint(uint64_t obj) {
         // The value is a char*
         auto *location = (char *) JITTERY_GET_VALUE(obj);
         std::cout << location << std::endl;
+    } else if (JITTERY_HAS_TAG(obj, JITTERY_TAG_INLINE_NUM)) {
+        // Clear the number info bits
+        auto isSigned = ((uint8_t) obj) == JITTERY_NUM_SIGNED;
+        obj >>= 8;
+
+        if (isSigned) {
+            std::cout << jit_ulong_to_long(obj) << std::endl;
+        } else {
+            std::cout << obj << std::endl;
+        }
+    } else if (JITTERY_HAS_TAG(obj, JITTERY_TAG_NUM)) {
+        // This is a double; pull it out
+        auto rawValue = JITTERY_GET_VALUE(obj);
+        auto asDouble = *((double *) &rawValue);
+        std::cout << asDouble << std::endl;
     } else {
         std::bitset<64> bits(obj);
         std::cout << "0b" << bits << std::endl;
@@ -150,6 +165,22 @@ antlrcpp::Any jit::Interpreter::visitIdExpr(frontend::JitteryParser::IdExprConte
     } else {
         return Any(symbol->GetValue());
     }
+}
+
+antlrcpp::Any jit::Interpreter::visitIntExpr(frontend::JitteryParser::IntExprContext *ctx) {
+    // Parse the value.
+    auto value = jit_long_to_ulong(atol(ctx->getText().c_str()));
+
+    // If this number can be inlined, then inline it.
+    if (value < JITTERY_MAX_INLINE_NUM) {
+        value <<= 8;
+        value |= JITTERY_TAG_INLINE_NUM;
+    } else {
+        // Otherwise, this is a quite large number.
+        // TODO: Handle this
+    }
+
+    return Any(JIT_ULONG_CONSTANT(value));
 }
 
 antlrcpp::Any jit::Interpreter::visitStringExpr(frontend::JitteryParser::StringExprContext *ctx) {
@@ -194,6 +225,8 @@ void *jit::Interpreter::GCNew(jit::Interpreter *interpreter, uint32_t size) {
                 free(ref->data);
                 delete ref;
             } else {
+                // Unmark the object, so that it will be destroyed in the next sweep.
+                ref->marked = false;
                 stillAlive.push(ref);
             }
 

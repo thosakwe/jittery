@@ -1,3 +1,5 @@
 let msg = 'Hello!'
+let one = 1
+
 Print(msg)
-return msg
+Print(one)

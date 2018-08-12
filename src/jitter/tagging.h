@@ -7,14 +7,19 @@
 #ifndef JITTERY_TAGGING_H
 #define JITTERY_TAGGING_H
 
-#define JITTERY_TAG_INT 0x0
-#define JITTERY_TAG_FLOAT 0x1
+#include <cmath>
+
+#define JITTERY_TAG_INLINE_NUM 0x0
+#define JITTERY_TAG_NUM 0x1
 #define JITTERY_TAG_SMALL_STRING 0x2
 #define JITTERY_TAG_STRING 0x3
 #define JITTERY_TAG_TRUE 0x4
 #define JITTERY_TAG_FALSE 0x5
 #define JITTERY_TAG_OBJECT 0x6
 #define JITTERY_TAG_NULL 0x7
+
+#define JITTERY_NUM_SIGNED 0x8
+#define JITTERY_NUM_UNSIGNED 0x9
 
 #define JITTERY_GET_TAG(x) (((uint8_t) (x)) & JITTERY_TAG_NULL)
 
@@ -27,5 +32,7 @@
 #define JITTERY_SET_VALUE(x, value) (JITTERY_SET_TAG((value), JITTERY_GET_TAG((x))))
 
 #define JITTERY_IS_NUMBER(x) (((x) >> 1) == 0)
+
+#define JITTERY_MAX_INLINE_NUM pow(2, 56)
 
 #endif //JITTERY_TAGGING_H
