@@ -1,0 +1,11 @@
+if true:
+    Print('Everything makes sense')
+else
+    Print('Nothing makes sense')
+end
+
+if false:
+    Print('What')
+else if true:
+    Print('Success')
+end

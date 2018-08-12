@@ -9,11 +9,13 @@ topLevel:
 
 fnDecl: 'fn' name=ID '(' ((params+=ID ',')* params+=ID)? ')' ':' stmt*  'end';
 
+stmts: stmt*;
+
 stmt:
     'let' ID '=' expr #VarDeclStmt
-    | 'if' condition=expr ':' ifPredicate=stmt* ('else' 'if' elseIf)*  ('else' elsePredicate=stmt*)? 'end' #IfStmt
-    | 'while' condition=expr stmt* 'end' #WhileStmt
-    | 'for' itemName=ID (',' indexName=ID)? 'in' expr ':' stmt* 'end' #ForStmt
+    | 'if' condition=expr ':' ifPredicate=stmts ('else' 'if' elseIf)*  ('else' elsePredicate=stmts)? 'end' #IfStmt
+    | 'while' condition=expr stmts 'end' #WhileStmt
+    | 'for' itemName=ID (',' indexName=ID)? 'in' expr ':' stmts 'end' #ForStmt
     | 'throw' expr #ThrowStmt
     | 'return' expr #ReturnStmt
     | ID '=' expr #IdAssnStmt

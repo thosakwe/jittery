@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <deque>
 #include <iostream>
+#include <unordered_map>
 #include <vector>
 #include "Interpreter.h"
 #include "tagging.h"
@@ -27,6 +28,12 @@ jit::Interpreter::Interpreter() {
 
 jit::Interpreter::~Interpreter() {
     jit_context_destroy(jitContext);
+
+    // Sweep the GC
+    while (!references.empty()) {
+        free(references.top()->data);
+        references.pop();
+    }
 }
 
 bool
@@ -46,8 +53,85 @@ void jit::Interpreter::Run(const char **errorMessage) {
     jit_function_apply(entryPoint, nullptr, nullptr);
 }
 
+antlrcpp::Any jit::Interpreter::visitStmt(frontend::JitteryParser::StmtContext *ctx) {
+    return ctx->accept(this);
+}
+
 antlrcpp::Any jit::Interpreter::visitExprStmt(frontend::JitteryParser::ExprStmtContext *ctx) {
     return visitExpr(ctx->expr());
+}
+
+antlrcpp::Any jit::Interpreter::visitIfStmt(frontend::JitteryParser::IfStmtContext *ctx) {
+    // Examine initial if condition
+    auto conditionAny = visitExpr(ctx->condition);
+
+    if (conditionAny.isNotNull()) {
+        //std::unordered_map<Pars
+        auto condition = conditionAny.as<jit_value_t>();
+        auto endLabel = jit_function_reserve_label(currentFunction);
+        auto elseLabel = jit_function_reserve_label(currentFunction);
+
+        // The if predicate runs if the condition is TRUE. Otherwise, jump to else.
+        auto isTrue = jit_insn_eq(currentFunction, condition, JIT_ULONG_CONSTANT(JITTERY_TAG_TRUE));
+        jit_insn_branch_if_not(currentFunction, isTrue, &elseLabel);
+
+        // Otherwise, just do everything defined in the if statement.
+        for (auto *stmt : ctx->ifPredicate->stmt()) {
+            visitStmt(stmt);
+        }
+
+        // If the condition was met, jump to the end.
+        jit_insn_branch(currentFunction, &endLabel);
+
+        // Else block
+        jit_insn_label(currentFunction, &elseLabel);
+
+        // Compile else-if
+        for (auto *elseIf : ctx->elseIf()) {
+
+            auto localConditionAny = visitExpr(elseIf->condition);
+
+            if (localConditionAny.isNotNull()) {
+                // Reserve a label that will be visited if the predicate was not matched.
+                auto localEndLabel = jit_function_reserve_label(currentFunction);
+
+                // Evaluate the condition.
+                auto localCondition = localConditionAny.as<jit_value_t>();
+                auto localIsTrue = jit_insn_eq(currentFunction, localCondition, JIT_ULONG_CONSTANT(JITTERY_TAG_TRUE));
+                jit_insn_branch_if_not(currentFunction, localIsTrue, &localEndLabel);
+
+                // Visit every statement.
+                for (auto *stmt : elseIf->stmt()) {
+                    visitStmt(stmt);
+                }
+
+                // Skip to the end, because we only want to run the logic from this
+                // condition.
+                jit_insn_branch(currentFunction, &endLabel);
+
+                // If the condition was not true, continue checking other statements.
+                jit_insn_label(currentFunction, &localEndLabel);
+            } else {
+                // TODO: Handle this
+                std::cerr << "Failed else if: " << elseIf->getText() << std::endl;
+            }
+        }
+
+        // Visit any behavior defined in else
+        if (ctx->elsePredicate != nullptr) {
+            for (auto *stmt : ctx->elsePredicate->stmt()) {
+                visitStmt(stmt);
+            }
+        }
+
+        // All paths end up at the next label.
+        jit_insn_label(currentFunction, &endLabel);
+    } else {
+        // TODO: Handle this
+        std::cerr << "Failed if: " << ctx->getText() << std::endl;
+    }
+
+    return Any();
 }
 
 antlrcpp::Any jit::Interpreter::visitVarDeclStmt(frontend::JitteryParser::VarDeclStmtContext *ctx) {
@@ -60,6 +144,7 @@ antlrcpp::Any jit::Interpreter::visitVarDeclStmt(frontend::JitteryParser::VarDec
             // TODO: Handle this
             std::cerr << "Cannot redefine " << ctx->ID()->getText() << std::endl;
         } else {
+            // Mark the object, if necessary.
             auto *symbol = scope->Resolve(ctx->ID()->getText());
             auto value = jit_value_create(currentFunction, jit_value_get_type(initializer));
             jit_insn_store(currentFunction, value, initializer);
@@ -71,6 +156,17 @@ antlrcpp::Any jit::Interpreter::visitVarDeclStmt(frontend::JitteryParser::VarDec
     }
 
     return Any();
+}
+
+antlrcpp::Any jit::Interpreter::visitThrowStmt(frontend::JitteryParser::ThrowStmtContext *ctx) {
+    auto result = visitExpr(ctx->expr());
+
+    if (result.isNotNull()) {
+        auto retVal = result.as<jit_value_t>();
+        jit_insn_throw(currentFunction, retVal);
+    }
+
+    return result;
 }
 
 antlrcpp::Any jit::Interpreter::visitReturnStmt(frontend::JitteryParser::ReturnStmtContext *ctx) {
@@ -233,7 +329,7 @@ void *jit::Interpreter::GCNew(jit::Interpreter *interpreter, uint32_t size) {
         while (!interpreter->references.empty()) {
             auto *ref = interpreter->references.top();
 
-            if (!ref->marked) {
+            if (!(ref->marked)) {
                 free(ref->data);
                 delete ref;
             } else {
@@ -259,9 +355,12 @@ void *jit::Interpreter::GCNew(jit::Interpreter *interpreter, uint32_t size) {
     }
 
     // Allocate data.
+    //
+    // Initially mark it as in-use; all data will survive at least one cycle.
     auto *data = new uint8_t[size];
     auto *ref = new GCReference;
     ref->marked = false;
+    ref->data = data;
     interpreter->references.push(ref);
-    return ref->data = data;
+    return ref;
 }

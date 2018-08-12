@@ -29,6 +29,10 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual antlrcpp::Any visitStmts(JitteryParser::StmtsContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual antlrcpp::Any visitVarDeclStmt(JitteryParser::VarDeclStmtContext *ctx) override {
     return visitChildren(ctx);
   }

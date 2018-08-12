@@ -26,6 +26,8 @@ public:
 
     virtual antlrcpp::Any visitFnDecl(JitteryParser::FnDeclContext *context) = 0;
 
+    virtual antlrcpp::Any visitStmts(JitteryParser::StmtsContext *context) = 0;
+
     virtual antlrcpp::Any visitVarDeclStmt(JitteryParser::VarDeclStmtContext *context) = 0;
 
     virtual antlrcpp::Any visitIfStmt(JitteryParser::IfStmtContext *context) = 0;

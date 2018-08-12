@@ -22,8 +22,8 @@ public:
   };
 
   enum {
-    RuleCompilationUnit = 0, RuleTopLevel = 1, RuleFnDecl = 2, RuleStmt = 3, 
-    RuleElseIf = 4, RuleExpr = 5
+    RuleCompilationUnit = 0, RuleTopLevel = 1, RuleFnDecl = 2, RuleStmts = 3, 
+    RuleStmt = 4, RuleElseIf = 5, RuleExpr = 6
   };
 
   JitteryParser(antlr4::TokenStream *input);
@@ -39,6 +39,7 @@ public:
   class CompilationUnitContext;
   class TopLevelContext;
   class FnDeclContext;
+  class StmtsContext;
   class StmtContext;
   class ElseIfContext;
   class ExprContext; 
@@ -87,6 +88,19 @@ public:
 
   FnDeclContext* fnDecl();
 
+  class  StmtsContext : public antlr4::ParserRuleContext {
+  public:
+    StmtsContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    std::vector<StmtContext *> stmt();
+    StmtContext* stmt(size_t i);
+
+    virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  StmtsContext* stmts();
+
   class  StmtContext : public antlr4::ParserRuleContext {
   public:
     StmtContext(antlr4::ParserRuleContext *parent, size_t invokingState);
@@ -105,13 +119,13 @@ public:
     IfStmtContext(StmtContext *ctx);
 
     JitteryParser::ExprContext *condition = nullptr;
-    JitteryParser::StmtContext *ifPredicate = nullptr;
-    JitteryParser::StmtContext *elsePredicate = nullptr;
+    JitteryParser::StmtsContext *ifPredicate = nullptr;
+    JitteryParser::StmtsContext *elsePredicate = nullptr;
     ExprContext *expr();
+    std::vector<StmtsContext *> stmts();
+    StmtsContext* stmts(size_t i);
     std::vector<ElseIfContext *> elseIf();
     ElseIfContext* elseIf(size_t i);
-    std::vector<StmtContext *> stmt();
-    StmtContext* stmt(size_t i);
     virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
   };
 
@@ -128,9 +142,8 @@ public:
     WhileStmtContext(StmtContext *ctx);
 
     JitteryParser::ExprContext *condition = nullptr;
+    StmtsContext *stmts();
     ExprContext *expr();
-    std::vector<StmtContext *> stmt();
-    StmtContext* stmt(size_t i);
     virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
   };
 
@@ -159,10 +172,9 @@ public:
     antlr4::Token *itemName = nullptr;
     antlr4::Token *indexName = nullptr;
     ExprContext *expr();
+    StmtsContext *stmts();
     std::vector<antlr4::tree::TerminalNode *> ID();
     antlr4::tree::TerminalNode* ID(size_t i);
-    std::vector<StmtContext *> stmt();
-    StmtContext* stmt(size_t i);
     virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
   };
 

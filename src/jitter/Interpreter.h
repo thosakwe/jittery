@@ -28,7 +28,11 @@ namespace jit
 
         void Run(const char **errorMessage);
 
+        Any visitStmt(JitteryParser::StmtContext *ctx);
+
         Any visitExprStmt(JitteryParser::ExprStmtContext *ctx) override;
+
+        Any visitIfStmt(JitteryParser::IfStmtContext *ctx) override;
 
         Any visitVarDeclStmt(JitteryParser::VarDeclStmtContext *ctx) override;
 
@@ -47,6 +51,8 @@ namespace jit
         Any visitTrueExpr(JitteryParser::TrueExprContext *ctx) override;
 
         Any visitFalseExpr(JitteryParser::FalseExprContext *ctx) override;
+
+        Any visitThrowStmt(JitteryParser::ThrowStmtContext *ctx) override;
 
     private:
 
