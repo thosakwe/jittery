@@ -46,6 +46,8 @@ public:
 
     virtual antlrcpp::Any visitStringExpr(JitteryParser::StringExprContext *context) = 0;
 
+    virtual antlrcpp::Any visitTrueExpr(JitteryParser::TrueExprContext *context) = 0;
+
     virtual antlrcpp::Any visitFloatExpr(JitteryParser::FloatExprContext *context) = 0;
 
     virtual antlrcpp::Any visitIdExpr(JitteryParser::IdExprContext *context) = 0;
@@ -63,6 +65,8 @@ public:
     virtual antlrcpp::Any visitBoolEqExpr(JitteryParser::BoolEqExprContext *context) = 0;
 
     virtual antlrcpp::Any visitCondExpr(JitteryParser::CondExprContext *context) = 0;
+
+    virtual antlrcpp::Any visitFalseExpr(JitteryParser::FalseExprContext *context) = 0;
 
 
 };

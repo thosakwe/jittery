@@ -143,6 +143,10 @@ void jitPrint(uint64_t obj) {
         auto rawValue = JITTERY_GET_VALUE(obj);
         auto asDouble = *((double *) &rawValue);
         std::cout << asDouble << std::endl;
+    } else if (JITTERY_HAS_TAG(obj, JITTERY_TAG_TRUE)) {
+        std::cout << "true" << std::endl;
+    } else if (JITTERY_HAS_TAG(obj, JITTERY_TAG_FALSE)) {
+        std::cout << "false" << std::endl;
     } else {
         std::bitset<64> bits(obj);
         std::cout << "0b" << bits << std::endl;
@@ -210,6 +214,14 @@ antlrcpp::Any jit::Interpreter::visitStringExpr(frontend::JitteryParser::StringE
         value |= JITTERY_TAG_STRING;
         return Any(JIT_ULONG_CONSTANT(value));
     }
+}
+
+antlrcpp::Any jit::Interpreter::visitTrueExpr(frontend::JitteryParser::TrueExprContext *ctx) {
+    return Any(JIT_ULONG_CONSTANT(JITTERY_TAG_TRUE));
+}
+
+antlrcpp::Any jit::Interpreter::visitFalseExpr(frontend::JitteryParser::FalseExprContext *ctx) {
+    return Any(JIT_ULONG_CONSTANT(JITTERY_TAG_FALSE));
 }
 
 void *jit::Interpreter::GCNew(jit::Interpreter *interpreter, uint32_t size) {

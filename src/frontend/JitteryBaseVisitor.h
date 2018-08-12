@@ -69,6 +69,10 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual antlrcpp::Any visitTrueExpr(JitteryParser::TrueExprContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual antlrcpp::Any visitFloatExpr(JitteryParser::FloatExprContext *ctx) override {
     return visitChildren(ctx);
   }
@@ -102,6 +106,10 @@ public:
   }
 
   virtual antlrcpp::Any visitCondExpr(JitteryParser::CondExprContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual antlrcpp::Any visitFalseExpr(JitteryParser::FalseExprContext *ctx) override {
     return visitChildren(ctx);
   }
 

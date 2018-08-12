@@ -23,7 +23,9 @@ stmt:
 elseIf: condition=expr ':' predicate=stmt*;
 
 expr:
-    ID #IdExpr
+    'true' #TrueExpr
+    | 'false' #FalseExpr
+    | ID #IdExpr
     | FLOAT #FloatExpr
     | INT #IntExpr
     | STRING #StringExpr

@@ -44,6 +44,10 @@ namespace jit
 
         Any visitIntExpr(JitteryParser::IntExprContext *ctx) override;
 
+        Any visitTrueExpr(JitteryParser::TrueExprContext *ctx) override;
+
+        Any visitFalseExpr(JitteryParser::FalseExprContext *ctx) override;
+
     private:
 
         struct GCReference
